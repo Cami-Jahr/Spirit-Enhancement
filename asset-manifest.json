@@ -1,0 +1,22 @@
+{
+  "files": {
+    "main.css": "/Spirit-Enhancement/static/css/main.8f452c19.chunk.css",
+    "main.js": "/Spirit-Enhancement/static/js/main.5ded916b.chunk.js",
+    "main.js.map": "/Spirit-Enhancement/static/js/main.5ded916b.chunk.js.map",
+    "runtime-main.js": "/Spirit-Enhancement/static/js/runtime-main.7132912e.js",
+    "runtime-main.js.map": "/Spirit-Enhancement/static/js/runtime-main.7132912e.js.map",
+    "static/js/2.d87290f8.chunk.js": "/Spirit-Enhancement/static/js/2.d87290f8.chunk.js",
+    "static/js/2.d87290f8.chunk.js.map": "/Spirit-Enhancement/static/js/2.d87290f8.chunk.js.map",
+    "index.html": "/Spirit-Enhancement/index.html",
+    "precache-manifest.a80a7a3267c00b9fb1343c6b26538c85.js": "/Spirit-Enhancement/precache-manifest.a80a7a3267c00b9fb1343c6b26538c85.js",
+    "service-worker.js": "/Spirit-Enhancement/service-worker.js",
+    "static/css/main.8f452c19.chunk.css.map": "/Spirit-Enhancement/static/css/main.8f452c19.chunk.css.map",
+    "static/js/2.d87290f8.chunk.js.LICENSE.txt": "/Spirit-Enhancement/static/js/2.d87290f8.chunk.js.LICENSE.txt"
+  },
+  "entrypoints": [
+    "static/js/runtime-main.7132912e.js",
+    "static/js/2.d87290f8.chunk.js",
+    "static/css/main.8f452c19.chunk.css",
+    "static/js/main.5ded916b.chunk.js"
+  ]
+}
