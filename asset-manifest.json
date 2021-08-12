@@ -1,22 +1,22 @@
 {
   "files": {
     "main.css": "/Spirit-Enhancement/static/css/main.c9f21e3f.chunk.css",
-    "main.js": "/Spirit-Enhancement/static/js/main.6ebf653b.chunk.js",
-    "main.js.map": "/Spirit-Enhancement/static/js/main.6ebf653b.chunk.js.map",
+    "main.js": "/Spirit-Enhancement/static/js/main.63889b64.chunk.js",
+    "main.js.map": "/Spirit-Enhancement/static/js/main.63889b64.chunk.js.map",
     "runtime-main.js": "/Spirit-Enhancement/static/js/runtime-main.7132912e.js",
     "runtime-main.js.map": "/Spirit-Enhancement/static/js/runtime-main.7132912e.js.map",
-    "static/js/2.9ad324ae.chunk.js": "/Spirit-Enhancement/static/js/2.9ad324ae.chunk.js",
-    "static/js/2.9ad324ae.chunk.js.map": "/Spirit-Enhancement/static/js/2.9ad324ae.chunk.js.map",
+    "static/js/2.971ba967.chunk.js": "/Spirit-Enhancement/static/js/2.971ba967.chunk.js",
+    "static/js/2.971ba967.chunk.js.map": "/Spirit-Enhancement/static/js/2.971ba967.chunk.js.map",
     "index.html": "/Spirit-Enhancement/index.html",
-    "precache-manifest.da26cab77d3ce9143aa28b5ed9acf63e.js": "/Spirit-Enhancement/precache-manifest.da26cab77d3ce9143aa28b5ed9acf63e.js",
+    "precache-manifest.8f17a2038a02e82a90fc5e07d4703485.js": "/Spirit-Enhancement/precache-manifest.8f17a2038a02e82a90fc5e07d4703485.js",
     "service-worker.js": "/Spirit-Enhancement/service-worker.js",
     "static/css/main.c9f21e3f.chunk.css.map": "/Spirit-Enhancement/static/css/main.c9f21e3f.chunk.css.map",
-    "static/js/2.9ad324ae.chunk.js.LICENSE.txt": "/Spirit-Enhancement/static/js/2.9ad324ae.chunk.js.LICENSE.txt"
+    "static/js/2.971ba967.chunk.js.LICENSE.txt": "/Spirit-Enhancement/static/js/2.971ba967.chunk.js.LICENSE.txt"
   },
   "entrypoints": [
     "static/js/runtime-main.7132912e.js",
-    "static/js/2.9ad324ae.chunk.js",
+    "static/js/2.971ba967.chunk.js",
     "static/css/main.c9f21e3f.chunk.css",
-    "static/js/main.6ebf653b.chunk.js"
+    "static/js/main.63889b64.chunk.js"
   ]
 }
