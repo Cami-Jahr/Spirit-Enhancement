@@ -13,7 +13,9 @@ class App extends React.Component {
       type: "ATTACK",
       u_id: 3031,
       u_tiles: 60,
-      u_type: "ATTACK",
+      u_type1: "ATTACK",
+      u_type2: "DEFENSE",
+      u_type3: "DEFENSE",
       taken: {},
     };
     this.state.taken = this.best_path(3031, "ATTACK", 60)
@@ -22,7 +24,7 @@ class App extends React.Component {
     this.handleKeyPress = this.handleKeyPress.bind(this);
 
     this.colours = {
-      "DEFENSE": {[false]:"#8691a7", [true]:"#0812a1"},
+      "DEFENSE": {[false]:"#ccffff", [true]:"#00ccff"},
       "HP": {[false]:"#936262", [true]:"#f00000"},
       "ATTACK": {[false]:"#c8bf84", [true]:"#ffd22e"},
       "START": {[false]:"#000000", [true]:"#000000"},
@@ -37,17 +39,15 @@ class App extends React.Component {
       let start = 0;
 
       for (let val of Object.values(value.enhancementCellList)) {
-        //console.log("før", val.pointX, val.pointY);
-        // TODO: Normalize off of min and max
-        sub[val.charaEnhancementCellId] = {...val, 
-          pointX: 100 + (val.pointX-1150) / 2 | 0,
-          pointY: 200 +(val.pointY-1000) / 3 | 0,
+        sub[val.charaEnhancementCellId] = {
+          ...val, 
+          pointX: 100 + (val.pointX-1196) / 2 || 0,
+          pointY: 200 + (val.pointY-1048) / 3 || 0
         }
 
         if (val.enhancementType === "START") {
           start = val.charaEnhancementCellId
         }
-        //console.log("etter", val.pointX, val.pointY);
       }
 
       if (Object.keys(sub).length !== 0){
@@ -55,20 +55,21 @@ class App extends React.Component {
         starts[key] = start
       }
     }
-    //console.log(dep);
-    //console.log(starts);
-    
-    
+   
     return {dep, starts};
   }
 
-  Comparator(a, b) {
-    if (a[0] < b[0]) return 1;
-    if (a[0] > b[0]) return -1;
+  comparator = (a, b) => {
+    if (a[0][this.state.u_type1] < b[0][this.state.u_type1]) return 1;
+    if (a[0][this.state.u_type1] > b[0][this.state.u_type1]) return -1;
+    if (a[0][this.state.u_type2] < b[0][this.state.u_type2]) return 1;
+    if (a[0][this.state.u_type2] > b[0][this.state.u_type2]) return -1;
+    if (a[0][this.state.u_type3] < b[0][this.state.u_type3]) return 1;
+    if (a[0][this.state.u_type3] > b[0][this.state.u_type3]) return -1;
     return 0;
   }
 
-  count (obj, array) {
+  countArrayEntriesNotInObject (obj, array) {
     let c = 0
     for (let n of array) {
       c += !obj[n]
@@ -76,9 +77,7 @@ class App extends React.Component {
     return c;
   }
 
-  best_path (id, type, max_tiles) {    
-    console.log(id, type, max_tiles);
-    
+  best_path (id, type, max_tiles) {        
     if (!this.state.data.dep[id]) return "Not defined"
     const memo = []
     const taken = {[this.state.data.starts[id]]: true}   
@@ -86,34 +85,30 @@ class App extends React.Component {
     for (let c_id of this.state.data.dep[id][this.state.data.starts[id]].connectedCellIdList) {
       this.b_path(id, c_id, type, memo, taken, []);
     }
-    
-    for (let entry of memo.sort(this.Comparator)){
-      if (Object.values(taken).reduce((a, b) => a + b, 0) + this.count(taken, entry[1]) <= max_tiles + 1) {
+
+    for (let entry of memo.sort(this.comparator)){
+      if (Object.values(taken).reduce((a, b) => a + b, 0) + this.countArrayEntriesNotInObject(taken, entry[1]) <= max_tiles + 1) {
         for (let p of entry[1]) {
           taken[p] = true
         }
       }
     }
-
-    /*let val = 0
-    for (let node of Object.keys(taken)) {
-      if (taken[node] && this.state.data.dep[id][node].enhancementType === type) {
-        val += this.state.data.dep[id][node].effectValue
-      }
-    }*/
   
     return taken;
   }
 
-  b_path (id, node, type, memo, taken, path=[], count=0, curr_val=0) {
+  b_path (id, node, type, memo, taken, path=[], count=0, curr_val={ATTACK: 0, DEFENSE: 0, HP: 0}) {
+    let obj = this.state.data.dep[id][node];
+    if(!obj) return;
     taken[node] = false
     count++;
     path = [...path, node]
-    let obj = this.state.data.dep[id][node];
-    if (obj.enhancementType === type) {
-      curr_val += obj.effectValue;
-      memo.push([curr_val / count, path])
-    }
+
+    curr_val = {...curr_val, [obj.enhancementType]: (curr_val[obj.enhancementType] || 0) + obj.effectValue};
+    const path_value = {}
+    Object.entries(curr_val).map(([key, value]) => {path_value[key] = value / count})
+    memo.push([path_value, path])
+
     if (obj.connectedCellIdList) {
       for (let c_id of obj.connectedCellIdList) {
         this.b_path(id, c_id, type, memo, taken, path, count, curr_val);
@@ -122,14 +117,10 @@ class App extends React.Component {
   }
 
   handleChange(event) {
-    console.log(event.target, event.target.value);
-    console.log(this.state);
-    console.log(event.target.type);
-    
     if (event.target.type === "select-one"){
-      console.log("this", event.target.name, event.target.value);
-      
-      this.setState({[event.target.name]: event.target.value}, () => this.handleSubmit(null));
+      try{
+        this.setState({[event.target.name]: event.target.value}, () => this.handleSubmit(null));
+      } catch (e) { }
     } else {
        this.setState({[event.target.name]: event.target.value ? parseInt(event.target.value) : ""});
     }
@@ -137,18 +128,12 @@ class App extends React.Component {
 
   handleKeyPress(event) {
     if (event.key === 'Enter') {
-      console.log(this);
-      
       this.handleSubmit(null);
     }
   }
 
   handleSubmit(event) {
-    console.log("updating");
-    
     if(this.state.data.dep[this.state.u_id]) {
-      console.log("valid", this.state);
-      
       this.setState({id: this.state.u_id, type: this.state.u_type, tiles: this.state.u_tiles, taken: this.best_path(this.state.u_id, this.state.u_type, this.state.u_tiles)})
     } else {
       this.setState({u_id: "invalid"})
@@ -162,7 +147,7 @@ class App extends React.Component {
     
     if (obj.connectedCellIdList) {
       for (let c_id of obj.connectedCellIdList) {
-        //console.log(obj.pointX, obj.pointY, this.state.data.dep[this.state.id][c_id].pointX, this.state.data.dep[this.state.id][c_id].pointY);
+        if(!this.state.data.dep[this.state.id][c_id]) continue;
         lines.push(<Line key={`${key}-${c_id}`} 
           borderColor={this.state.taken[c_id] ? "#ff0000": "#723131"}
           borderStyle={this.state.taken[c_id] ? "solid": "dashed"}
@@ -178,9 +163,8 @@ class App extends React.Component {
   }
 
   createBox(Y, X, key) { 
-
-    let colour = (this.colours[this.state.data.dep[this.state.id][key].enhancementType]|| {[false]:"#efe0f0", [true]:"#f99eff"})[this.state.taken[key]] 
-    console.log(key, colour, this.state.taken[key]);
+    const node = this.state.data.dep[this.state.id][key]
+    let colour = (this.colours[node.enhancementType]|| {[false]:"#efe0f0", [true]:"#f99eff"})[this.state.taken[key]] 
     const styleTop = {
       position: "absolute",
       left: X + "px",
@@ -192,6 +176,7 @@ class App extends React.Component {
       left: X + "px",
       top: Y + "px",
       backgroundColor: colour,
+      textAlign: "center"
     }
     const styleBot = {
       position: "absolute",
@@ -208,7 +193,9 @@ class App extends React.Component {
         <div
         style={styleMid}
         className="hexagon"
-        />      
+        >
+          {node.enhancementType !== "SKILL" && !node.enhancementType.includes("DISK") ? node.effectValue : ""}
+        </div>      
         <div
         style={styleBot}
         className="hexagon-bot"
@@ -235,7 +222,7 @@ class App extends React.Component {
     }
     return opts;
   }
-  
+
   render() {
     return (
       <div>
@@ -251,15 +238,39 @@ class App extends React.Component {
             </select>
           </label>
           <label>
-            Type:
+            Primary Type:
             <select 
-              value={this.state.u_type} 
+              value={this.state.u_type1} 
               onChange={this.handleChange}
-              name="u_type"
+              name="u_type1"
             >
               <option value="ATTACK">Attack</option>
               <option value="HP">HP</option>
               <option value="DEFENSE">Defense</option>
+            </select>
+          </label>
+          <label>
+            Secondary Type:
+            <select 
+              value={this.state.u_type2} 
+              onChange={this.handleChange}
+              name="u_type2"
+            >
+              {this.state.u_type1 !== "ATTACK" && <option value="ATTACK">Attack</option>}
+              {this.state.u_type1 !== "HP" && <option value="HP">HP</option>}
+              {this.state.u_type1 !== "DEFENSE" && <option value="DEFENSE">Defense</option>}
+            </select>
+          </label>
+          <label>
+            Tertiary Type:
+            <select 
+              value={this.state.u_type3} 
+              onChange={this.handleChange}
+              name="u_type3"
+            >
+              {this.state.u_type1 !== "ATTACK" && this.state.u_type2 !== "ATTACK" && <option value="ATTACK">Attack</option>}
+              {this.state.u_type1 !== "HP" && this.state.u_type2 !== "HP" && <option value="HP">HP</option>}
+              {this.state.u_type1 !== "DEFENSE" && this.state.u_type2 !== "DEFENSE" && <option value="DEFENSE">Defense</option>}
             </select>
           </label>
           <label>
