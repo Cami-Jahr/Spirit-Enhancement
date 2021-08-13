@@ -16,6 +16,7 @@ class App extends React.Component {
             u_type1: "ATTACK",
             u_type2: "DEFENSE",
             u_type3: "HP",
+            u_nodes: "",
             nodes_in_best_paths: {}
         };
         this.handleChange = this.handleChange.bind(this);
@@ -31,12 +32,12 @@ class App extends React.Component {
     }
 
     makeMap(data) {
-        let dep = {};
-        let starts = {};
-        for (let [key, value] of Object.entries(data)) {
-            let sub = {};
+        const dep = {};
+        const starts = {};
+        for (const [key, value] of Object.entries(data)) {
+            const sub = {};
             let start = 0;
-            for (let val of Object.values(value.enhancementCellList)) {
+            for (const val of Object.values(value.enhancementCellList)) {
                 sub[val.charaEnhancementCellId] = {
                     ...val,
                     pointX: 100 + (val.pointX - 1196) / 2 || 0,
@@ -59,17 +60,77 @@ class App extends React.Component {
         const girl_se = this.state.data.dep[girl_id]
         if (!girl_se) return "Not defined"
         const start = performance.now();
-        const nodes_in_best_paths = {[this.state.data.starts[girl_id]]: true}
+        const nodes_in_best_paths = {}
         console.log("Making graph with " + this.state.u_tiles + " nodes for " + girl_id + " for types in order: " + this.state.u_type1 + ", " + this.state.u_type2 + ", " + this.state.u_type3)
 
-        this.__optimal_path(girl_id, girl_se, nodes_in_best_paths, this.state.u_type1, this.state.u_type2, this.state.u_type3)
-        this.__optimal_path(girl_id, girl_se, nodes_in_best_paths, this.state.u_type2, this.state.u_type1, this.state.u_type3)
-        this.__optimal_path(girl_id, girl_se, nodes_in_best_paths, this.state.u_type3, this.state.u_type1, this.state.u_type2)
+        const parents = {}
+        const possible_best_paths = []
+        const special_nodes = []
+        for (const c_id of girl_se[this.state.data.starts[girl_id]].connectedCellIdList) {
+            this.find_parents(girl_id, c_id, parents, special_nodes)
+        }
+        console.log("" + special_nodes.length + " special nodes: " + special_nodes.join(", "))
+        for (let preselected_node of this.state.u_nodes.split(",")) {
+            preselected_node = preselected_node.trim()
+            if (preselected_node in parents) {
+                let node = preselected_node
+                while (node) {
+                    nodes_in_best_paths[node] = true
+                    node = parents[node]
+                }
+            }
+        }
+        console.log("Preselected nodes: ", Object.keys(nodes_in_best_paths).sort().join(", "))
+        nodes_in_best_paths[this.state.data.starts[girl_id]] = true
 
-        console.log('It took ' + (performance.now() - start) + ' ms.');
+        const chosen_nodes = this.__optimal_path(girl_id, girl_se, nodes_in_best_paths, this.state.u_type1, this.state.u_type2, this.state.u_type3)
+        for (const nodes of chosen_nodes) {
+            const local_nodes_in_best_paths = {...nodes_in_best_paths}
+            for (const node of nodes) {
+                local_nodes_in_best_paths[node] = true
+            }
+            const chosen_nodes2 = this.__optimal_path(girl_id, girl_se, local_nodes_in_best_paths, this.state.u_type2, this.state.u_type1, this.state.u_type3)
+            if (chosen_nodes2.length === 0) {
+                possible_best_paths.push(local_nodes_in_best_paths)
+            }
+            for (const nodes2 of chosen_nodes2) {
+                const local_nodes_in_best_paths2 = {...local_nodes_in_best_paths}
+                for (const node2 of nodes2) {
+                    local_nodes_in_best_paths2[node2] = true
+                }
+                const chosen_nodes3 = this.__optimal_path(girl_id, girl_se, local_nodes_in_best_paths2, this.state.u_type3, this.state.u_type1, this.state.u_type2)
+                if (chosen_nodes3.length === 0) {
+                    possible_best_paths.push(local_nodes_in_best_paths2)
+                }
+                for (const nodes3 of chosen_nodes3) {
+                    const local_nodes_in_best_paths3 = {...local_nodes_in_best_paths2}
+                    for (const node3 of nodes3) {
+                        local_nodes_in_best_paths3[node3] = true
+                    }
+                    possible_best_paths.push(local_nodes_in_best_paths3)
+                }
+            }
+        }
+        const optimal_results = {}
+
+        for (const possible_path of possible_best_paths) {
+            const value = {[this.state.u_type1]: 0, [this.state.u_type2]: 0, [this.state.u_type3]: 0}
+            for (const nodeId of Object.keys(possible_path)) {
+                value[girl_se[nodeId].enhancementType] += (girl_se[nodeId].effectValue || 0)
+            }
+            optimal_results[Object.keys(possible_path).sort().join(",")] = value
+        }
+        let optimal_nodes
+        try {
+            optimal_nodes = Object.entries(optimal_results).sort(this.comparator(this.state.u_type1, this.state.u_type2, this.state.u_type3))[0][0].split(",")
+        } catch (e) {
+            console.warn("No valid paths found")
+            optimal_nodes = []
+        }
         const optimal_result = {}
         let enhancementType, effectValue
-        for (const nodeId of Object.keys(nodes_in_best_paths)) {
+        for (const nodeId of optimal_nodes) {
+            nodes_in_best_paths[nodeId] = true
             enhancementType = girl_se[nodeId].enhancementType
             effectValue = enhancementType === "SKILL" || enhancementType.includes("DISK") ? 1 : girl_se[nodeId].effectValue
             if (enhancementType in optimal_result) {
@@ -79,36 +140,33 @@ class App extends React.Component {
             }
         }
         delete optimal_result.START
+        console.log('It took ' + (performance.now() - start) + ' ms.');
         console.log("Best result: ", optimal_result)
         return nodes_in_best_paths
     }
 
-    __optimal_path = (girl_id, girl_se, nodes_in_best_paths, type1, type2, type3) => {
-        const count_chosen_nodes = Object.values(nodes_in_best_paths).filter(k => k).length - 1 // remove start
+    __optimal_path = (girl_id, girl_se, nodes_in_path, type1, type2, type3) => {
+        const count_chosen_nodes = Object.values(nodes_in_path).filter(k => k).length - 1 // remove start
         const remaining_nodes = this.state.u_tiles - count_chosen_nodes
         if (remaining_nodes === 0) {
-            return
+            return []
         }
-        const chosen_nodes = this.find_optimal_path_for_type(girl_id, girl_se, type1, type2, type3, remaining_nodes)
-
-        for (const node of chosen_nodes) {
-            nodes_in_best_paths[node] = true
-        }
+        return this.find_optimal_path_for_type(girl_id, girl_se, nodes_in_path, type1, type2, type3, remaining_nodes)
     }
 
-    find_optimal_path_for_type = (girl_id, girl_se, type1, type2, type3, max_node_count) => {
+    find_optimal_path_for_type = (girl_id, girl_se, nodes_in_path, type1, type2, type3, max_node_count) => {
         const paths_to_consider = []
         const paths_weights = {}
-        const parents = {}
+        const local_parents = {}
         const shared_weight_between_siblings = {}
-        for (let c_id of girl_se[this.state.data.starts[girl_id]].connectedCellIdList) {
-            this.find_paths(girl_id, c_id, type1, paths_to_consider, paths_weights, [], 0, parents, shared_weight_between_siblings);
+        for (const c_id of girl_se[this.state.data.starts[girl_id]].connectedCellIdList) {
+            this.find_paths(girl_id, c_id, nodes_in_path, type1, paths_to_consider, paths_weights, [], 0, local_parents, shared_weight_between_siblings);
         }
 
         for (const node of Object.keys(paths_weights)) {
             let parent_node = node
             do {
-                parent_node = parents[parent_node]
+                parent_node = local_parents[parent_node]
                 if (parent_node in paths_weights) { // if parent is of type without any siblings showing up it can keep it's heuristic
                     break
                 }
@@ -125,25 +183,39 @@ class App extends React.Component {
 
         const dp_memo = {}
         this.build_dp_memo(girl_se, type1, dp_memo, max_node_count, [], paths_to_consider, paths_weights)
-        let chosen_nodes = []
-        for (let [path, _] of Object.entries(dp_memo).sort(this.comparator(type1, type2, type3))) {
-            const nodes = this.calculate_parents(parents, path)
-            const new_chosen_nodes = Array.from(new Set([...chosen_nodes, ...nodes]))
-            if (new_chosen_nodes.length <= max_node_count) {
-                chosen_nodes = new_chosen_nodes
+        const possible_chosen_nodes = []
+        let best_type1 = undefined
+        for (const [path, value] of Object.entries(dp_memo).sort(this.comparator(type1, type2, type3))) {
+            const nodes = this.calculate_parents(local_parents, path)
+            if (best_type1 && best_type1 > value[type1]) {
                 break
+            }
+            if (nodes.length <= max_node_count) {
+                possible_chosen_nodes.push(nodes)
+                best_type1 = value[type1]
+            }
+        }
+        for (let i = 0; i < possible_chosen_nodes.length; i++) {
+            for (const [path, _] of Object.entries(dp_memo).sort(this.comparator(type1, type2, type3))) {
+                const nodes = this.calculate_parents(local_parents, path)
+                const new_chosen_nodes = Array.from(new Set([...possible_chosen_nodes[i], ...nodes]))
+                if (new_chosen_nodes.length <= max_node_count) {
+                    possible_chosen_nodes[i] = new_chosen_nodes
+                }
             }
         }
         console.log("dp_memo made for " + type1 + ", considered " + Object.keys(dp_memo).length + " different combinations")
-        return chosen_nodes
+        return possible_chosen_nodes
     }
 
-    find_paths(girl_id, node, type, paths, weight_of_node, path, steps_since_type, parents, siblings) {
-        let obj = this.state.data.dep[girl_id][node];
+    find_paths(girl_id, node, nodes_in_path, type, paths, weight_of_node, path, steps_since_type, parents, siblings) {
+        const obj = this.state.data.dep[girl_id][node];
         if (!obj) return;
         steps_since_type++
 
-        if (obj.enhancementType === type) {
+        if (node in nodes_in_path) {
+            steps_since_type = 0
+        } else if (obj.enhancementType === type) {
             path = [...path, node]
             paths.push(path.sort())
             weight_of_node[node] = steps_since_type
@@ -151,12 +223,29 @@ class App extends React.Component {
         }
         const children = obj.connectedCellIdList
         if (children) {
-            for (let c_id of children) {
+            for (const c_id of children) {
                 if (steps_since_type > 0 && children.length > 1) { // Dont need to consider for branches that happen in a node of the wanted type
                     siblings[c_id] = steps_since_type
                 }
+                if (!(node in nodes_in_path)) {
+                    parents[c_id] = node
+                }
+                this.find_paths(girl_id, c_id, nodes_in_path, type, paths, weight_of_node, path, steps_since_type, parents, siblings);
+            }
+        }
+    }
+
+    find_parents(girl_id, node, parents, special_nodes) {
+        const obj = this.state.data.dep[girl_id][node];
+        if (!obj) return;
+        const children = obj.connectedCellIdList
+        if (obj.enhancementType === "SKILL" || obj.enhancementType.includes("DISK")) {
+            special_nodes.push(node)
+        }
+        if (children) {
+            for (const c_id of children) {
                 parents[c_id] = node
-                this.find_paths(girl_id, c_id, type, paths, weight_of_node, path, steps_since_type, parents, siblings);
+                this.find_parents(girl_id, c_id, parents, special_nodes)
             }
         }
     }
@@ -202,6 +291,8 @@ class App extends React.Component {
         return 0;
     }
 
+    handleNodes = event => this.setState({u_nodes: event.target.value})
+
     handleChange(event) {
         if (event.target.type === "select-one") {
             try {
@@ -244,10 +335,10 @@ class App extends React.Component {
 
     createLines(key) {
         const lines = []
-        let obj = this.state.data.dep[this.state.id][key];
+        const obj = this.state.data.dep[this.state.id][key];
 
         if (obj.connectedCellIdList) {
-            for (let c_id of obj.connectedCellIdList) {
+            for (const c_id of obj.connectedCellIdList) {
                 if (!this.state.data.dep[this.state.id][c_id]) {
                     continue;
                 }
@@ -269,7 +360,7 @@ class App extends React.Component {
 
     createBox(Y, X, key) {
         const node = this.state.data.dep[this.state.id][key]
-        let colour = (this.colours[node.enhancementType]
+        const colour = (this.colours[node.enhancementType]
             || {[false]: "#efe0f0", [true]: "#f99eff"}
         )[this.state.nodes_in_best_paths[key] || false]
         const styleTop = {
@@ -317,7 +408,7 @@ class App extends React.Component {
 
     createBoxes() {
         const boxes = []
-        for (let [key, value] of Object.entries(this.state.data.dep[this.state.id])) {
+        for (const [key, value] of Object.entries(this.state.data.dep[this.state.id])) {
             boxes.push(
                 this.createBox(value.pointY, value.pointX, key)
             )
@@ -327,7 +418,7 @@ class App extends React.Component {
 
     options() {
         const opts = []
-        for (let id of Object.keys(this.state.data.starts)) {
+        for (const id of Object.keys(this.state.data.starts)) {
             opts.push(<option key={id} value={id}>{id}</option>)
         }
         return opts;
@@ -392,6 +483,16 @@ class App extends React.Component {
                         type="number"
                         value={this.state.u_tiles}
                         onChange={this.handleChange}
+                        onKeyPress={this.handleKeyPress}
+                    />
+                </label>
+                <label>
+                    Selected nodes:
+                    <input
+                        name="u_nodes"
+                        type="text"
+                        value={this.state.u_nodes}
+                        onChange={this.handleNodes}
                         onKeyPress={this.handleKeyPress}
                     />
                 </label>
